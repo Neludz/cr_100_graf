@@ -26,6 +26,11 @@ public partial class Form1 : Form
         }
     }
 
+    // Ensure the backing tracking fields are explicitly initialized like this:
+    private readonly System.Collections.Generic.List<double> _chartHistory = new();
+    private const int ChartMaxPoints = 120; // Handles exactly 40 updates (20 seconds at 500 ms intervals)
+
+
     public Form1()
     {
         InitializeComponent();
@@ -34,14 +39,21 @@ public partial class Form1 : Form
         btnStop.Click += btnStop_Click;
         btnRefreshPorts.Click += (s, e) => { if (!_isPolling) ScanPorts(); };
 
-    if (System.IO.File.Exists("mal.ico"))
+        // --- ADDED: CLEAR CHART HISTORICAL BUFFER CLICK EVENT ---
+        btnClearChart.Click += (s, e) =>
+        {
+            _chartHistory.Clear(); // Empties the data tracking list
+            picChart.Invalidate(); // Forces the PictureBox to repaint itself instantly
+        };
+
+        if (System.IO.File.Exists("mal.ico"))
         {
             this.Icon = new System.Drawing.Icon("mal.ico");
         }
 
 
         cmbComPorts.DrawItem += ComDraw; cmbBaudRates.DrawItem += ComDraw; cmbPortMode.DrawItem += ComDraw;
-
+        picChart.Paint += picChart_Paint;
         BindUiControls(this);
     }
 
@@ -73,8 +85,9 @@ public partial class Form1 : Form
         if (_isPolling || _currentDevice == null) return;
         try
         {
-            if (cmbComPorts.SelectedIndex == -1) { MessageBox.Show("Абярыце COM-порт!"); return; }
+            if (cmbComPorts.SelectedIndex == -1) { MessageBox.Show("Выберыце COM-порт!"); return; }
 
+            // Захоўваем параметры лакальна для бяспечнага перападключэння пры абрыве
             string selectedPort = cmbComPorts.SelectedItem.ToString()!;
             int selectedBaud = Convert.ToInt32(cmbBaudRates.SelectedItem);
 
@@ -89,7 +102,10 @@ public partial class Form1 : Form
                 if (prop != null) prop.SetValue(_currentDevice, sid);
             }
 
-            // Set state to TRUE before interlocking the interface
+            // Ачышчаем старую гісторыю графіка перад пачаткам хуткага апытання
+            _chartHistory.Clear();
+            picChart.Invalidate();
+
             _isPolling = true;
             ToggleInterfaceState(false);
 
@@ -97,21 +113,21 @@ public partial class Form1 : Form
             {
                 try
                 {
-                    // Instant thread-interlock check
                     if (!_isPolling) break;
 
-                    if (lblStatus.Text.StartsWith("Памылка сувязі"))
+                    // АЎТАМАТЫЧНАЕ ПЕРАПАД КЛЮЧЭННЕ ПРЫ АБРЫВЕ СУВЯЗІ
+                    if (lblStatus.Text.StartsWith("Памылка сувязі") || lblStatus.Text.StartsWith("Перападключэнне"))
                     {
                         lblStatus.ForeColor = System.Drawing.SystemColors.ControlText;
-                        lblStatus.Text = "Перападключэнне да прылады...";
+                        lblStatus.Text = "Перападключэнне да прыбора...";
                         _engine.ConnectRtu(selectedPort, selectedBaud, pr, sb, 1000);
                     }
 
                     await _engine.PollDeviceAsync(_currentDevice);
 
-                    // Safety Interlock check directly after network await operation wakes up
                     if (!_isPolling) break;
 
+                    // 1. ЦЫКЛ АБНАЎЛЕННЯ ЭЛЕМЕНТАЎ ІНТЭРФЕЙСУ СУВЯЗІ (TextBox, ComboBox)
                     foreach (var param in _currentDevice.Parameters)
                     {
                         TextBox? targetTxt = FindBox(this, param.Name);
@@ -127,7 +143,7 @@ public partial class Form1 : Form
                                 if (param.EnumValues != null && param.EnumValues.Count > 0)
                                 {
                                     var enumMatch = param.EnumValues.Find(x => x.Key == rawKey);
-                                    displayValue = enumMatch != null ? enumMatch.Value : $"{rawKey} (Unknown)";
+                                    displayValue = enumMatch != null ? enumMatch.Value : $"{rawKey} (Невядома)";
 
                                     if (targetCmb != null)
                                     {
@@ -135,19 +151,34 @@ public partial class Form1 : Form
                                         {
                                             foreach (var item in param.EnumValues) targetCmb.Items.Add(item.Value);
                                         }
+
                                         int targetIdx = param.EnumValues.FindIndex(x => x.Key == rawKey);
-                                        if (targetIdx != -1 && targetCmb.DroppedDown == false) targetCmb.SelectedIndex = targetIdx;
+                                        if (targetIdx != -1 && targetCmb.DroppedDown == false)
+                                        {
+                                            targetCmb.SelectedIndex = targetIdx;
+                                        }
                                     }
                                 }
                                 else
                                 {
                                     double scaledNum = rawNum * param.Scale;
-                                    if (Math.Abs(param.Scale - 1.0) < 0.0001) displayValue = ((int)scaledNum).ToString();
+                                    if (Math.Abs(param.Scale - 1.0) < 0.0001)
+                                    {
+                                        displayValue = ((int)scaledNum).ToString();
+                                    }
                                     else
                                     {
+                                        // --- ВЫПРАЎЛЕНА: ДАКЛАДНЫ РАЗЛІК ЗНАКАЎ ПАСЛЯ КОСКІ ---
                                         string scaleStr = param.Scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                                        int decimalPlaces = scaleStr.Contains(".") ? scaleStr.Split('.').Length - 1 : 0;
-                                        displayValue = scaledNum.ToString("0." + new string('0', decimalPlaces), System.Globalization.CultureInfo.InvariantCulture);
+
+                                        // Знаходзім пазіцыю кропкі і вылічаем сапраўдную колькасць знакаў пасля яе
+                                        int dotIndex = scaleStr.IndexOf('.');
+                                        int decimalPlaces = dotIndex >= 0 ? scaleStr.Length - dotIndex - 1 : 0;
+
+                                        // Ствараем правільную маску: "0.00" для двух знакаў, "0.0" для аднаго і г.д.
+                                        string formatMask = "0." + new string('0', decimalPlaces);
+
+                                        displayValue = scaledNum.ToString(formatMask, System.Globalization.CultureInfo.InvariantCulture);
                                     }
                                 }
                             }
@@ -168,7 +199,7 @@ public partial class Form1 : Form
                                     lampText = isBitOn ? param.BitLabels.OnText : param.BitLabels.OffText;
                                     actualBgColor = System.Drawing.Color.FromName(isBitOn ? param.BitLabels.OnColor : param.BitLabels.OffColor);
                                     string customColorStr = isBitOn ? param.BitLabels.OnColor : param.BitLabels.OffColor;
-                                    textColor = customColorStr.Equals("Red", StringComparison.OrdinalIgnoreCase) ? System.Drawing.Color.White : System.Drawing.Color.Black;
+                                    textColor = customColorStr.Equals("Red", StringComparison.OrdinalIgnoreCase) ? System.Drawing.Color.White : System.Drawing.SystemColors.WindowText;
                                 }
 
                                 targetTxt.BackColor = actualBgColor;
@@ -178,10 +209,24 @@ public partial class Form1 : Form
                             }
                         }
 
-                        if (targetTxt != null) targetTxt.Text = displayValue + unitSuffix;
+                        if (targetTxt != null)
+                        {
+                            targetTxt.Text = displayValue + unitSuffix;
+                        }
+                    } // ⚠️ КАНЕЦ ЦЫКЛА FOREACH ДЛЯ ТЭКСТБОКСАЎ
+
+                    // === 2. ХУТКАСНЫ АДСЦЫЛОГРАФ ТОКУ (УЖО ПАСЛЯ FOREACH - 500мс) ===
+                    // Выпраўлена: Цяпер строга шукаем менавіта "Ток RMS"
+                    var chartParam = _currentDevice.Parameters.Find(p => p.Name.Equals("Ток RMS", StringComparison.OrdinalIgnoreCase));
+                    if (chartParam != null && double.TryParse(chartParam.Value.ToString(), out double chartVal))
+                    {
+                        _chartHistory.Add(chartVal * chartParam.Scale);
+                        if (_chartHistory.Count > ChartMaxPoints) _chartHistory.RemoveAt(0);
+
+                        // Загадваем PictureBox імгненна перамалявацца
+                        picChart.Invalidate();
                     }
 
-                    // CRITICAL INTERLOCK: Verify polling state one final time before painting "Связь: OK"
                     if (!_isPolling) break;
 
                     lblStatus.ForeColor = System.Drawing.Color.DarkGreen;
@@ -189,7 +234,6 @@ public partial class Form1 : Form
                 }
                 catch (Exception ex)
                 {
-                    // If the user hit STOP while we were waiting for a Modbus response, exit cleanly without showing an error
                     if (!_isPolling) break;
 
                     lblStatus.ForeColor = System.Drawing.Color.DarkRed;
@@ -198,11 +242,144 @@ public partial class Form1 : Form
                 }
 
                 if (!_isPolling) break;
-                await Task.Delay(1000);
+                await Task.Delay(500); // 500 мс — частата абнаўлення
             }
         }
-        catch (Exception ex) { MessageBox.Show($"Памылка старта: {ex.Message}"); StopPolling(); }
+        catch (Exception ex) { MessageBox.Show($"Памылка старту: {ex.Message}"); StopPolling(); }
     }
+
+
+
+
+
+    private void picChart_Paint(object sender, PaintEventArgs e)
+    {
+        System.Drawing.Graphics g = e.Graphics;
+        int w = picChart.Width;
+        int h = picChart.Height;
+
+        int paddingLeft = 45;
+        int paddingBottom = 25;
+        int paddingTop = 15;
+        int paddingRight = 25;
+
+        int chartWidth = w - paddingLeft - paddingRight;
+        int chartHeight = h - paddingTop - paddingBottom;
+
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        // 1. АЧЫСТКА ЭКРАНА - Стандартны шэры прамысловы фон
+        g.Clear(System.Drawing.Color.FromArgb(240, 240, 240));
+
+        // 2. МАЛЮЕМ ОЛДСКУЛЬНУЮ СЕТКУ ТОЧКАМІ
+        using (System.Drawing.Pen gridPen = new System.Drawing.Pen(System.Drawing.Color.DarkGray, 1f))
+        {
+            gridPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+
+            // Вертыкальныя лініі сеткі (Час)
+            for (int i = 0; i <= 4; i++)
+            {
+                float x = paddingLeft + (i * (float)chartWidth / 4);
+                g.DrawLine(gridPen, x, (float)paddingTop, x, (float)(paddingTop + chartHeight));
+            }
+            // Гарызантальныя лініі сеткі (Амперы)
+            for (int i = 0; i <= 4; i++)
+            {
+                float y = paddingTop + (i * (float)chartHeight / 4);
+                g.DrawLine(gridPen, (float)paddingLeft, y, (float)(paddingLeft + chartWidth), y);
+            }
+        }
+
+        // --- ЗЧЫТВАННЕ ЎСТАЎК СУВЯЗІ З JSON КАШУ ---
+        double onThreshold = 0.0;
+        double offThreshold = 0.0;
+
+        if (_currentDevice != null)
+        {
+            var pOn = _currentDevice.Parameters.Find(x => x.Name.Equals("Устаўка ўключэння DO-1", StringComparison.OrdinalIgnoreCase));
+            if (pOn != null && double.TryParse(pOn.Value?.ToString(), out double rawOn)) onThreshold = rawOn * pOn.Scale;
+
+            var pOff = _currentDevice.Parameters.Find(x => x.Name.Equals("Устаўка адключэння DO-1", StringComparison.OrdinalIgnoreCase));
+            if (pOff != null && double.TryParse(pOff.Value?.ToString(), out double rawOff)) offThreshold = rawOff * pOff.Scale;
+        }
+
+        // --- ДЫНАМІЧНЫ ВЫЛІК МАКСІМУМУ ШКАЛЫ (МАТРЫЦА КРАТНАСЦІ 10) ---
+        double highestRead = 0.0;
+        foreach (var v in _chartHistory) { if (v > highestRead) highestRead = v; }
+        if (onThreshold > highestRead) highestRead = onThreshold;
+        if (offThreshold > highestRead) highestRead = offThreshold;
+
+        // ІСПРАЎЛЕННЕ: Акругляем да 10 і прымусова дадаем яшчэ 10 Ампер як запас зверху!
+        // Дзякуючы гэтаму лініі графікаў ніколі не прыціснуцца да самога верхняга краю PictureBox
+        double maxVal = (Math.Ceiling(highestRead / 10.0) * 10.0) + 10.0;
+        if (maxVal < 10.0) maxVal = 10.0;
+
+        // Маляванне тэксту стандартным шрыфтам Windows Forms
+        using (System.Drawing.Font labelFont = new System.Drawing.Font(this.Font.FontFamily, 8f, System.Drawing.FontStyle.Regular))
+        using (System.Drawing.SolidBrush textBrush = new System.Drawing.SolidBrush(System.Drawing.Color.Black))
+        {
+            // 3. ВЕРТЫКАЛЬНАЯ ШКАЛА - АМПЕРЫ (Y)
+            g.DrawString($"{maxVal:0} A", labelFont, textBrush, 5f, (float)(paddingTop - 4));
+            g.DrawString($"{(maxVal * 0.75):0} A", labelFont, textBrush, 5f, (float)(paddingTop + (chartHeight * 0.25) - 6));
+            g.DrawString($"{(maxVal * 0.50):0} A", labelFont, textBrush, 5f, (float)(paddingTop + (chartHeight * 0.50) - 6));
+            g.DrawString($"{(maxVal * 0.25):0} A", labelFont, textBrush, 5f, (float)(paddingTop + (chartHeight * 0.75) - 6));
+            g.DrawString("0 A", labelFont, textBrush, 5f, (float)(paddingTop + chartHeight - 8));
+
+            // 4. ГАРЫЗАНТАЛЬНАЯ ШКАЛА - СЕКУНДЫ (X: ад 0с да 60с)
+            g.DrawString("0с", labelFont, textBrush, (float)(paddingLeft - 5), (float)(paddingTop + chartHeight + 5));
+            g.DrawString("15с", labelFont, textBrush, (float)(paddingLeft + (chartWidth * 0.25) - 10), (float)(paddingTop + chartHeight + 5));
+            g.DrawString("30с", labelFont, textBrush, (float)(paddingLeft + (chartWidth * 0.50) - 10), (float)(paddingTop + chartHeight + 5));
+            g.DrawString("45с", labelFont, textBrush, (float)(paddingLeft + (chartWidth * 0.75) - 10), (float)(paddingTop + chartHeight + 5));
+            g.DrawString("60с", labelFont, textBrush, (float)(paddingLeft + chartWidth - 12), (float)(paddingTop + chartHeight + 5));
+        }
+
+        // --- 5. МАЛЮЕМ ГАРЫЗАНТАЛЬНЫЯ ЛІНІІ ЎСТАЎК АБАРОНЫ ---
+        if (_currentDevice != null)
+        {
+            using (System.Drawing.Pen thresholdPen = new System.Drawing.Pen(System.Drawing.Color.Red, 1.5f))
+            {
+                thresholdPen.DashPattern = new float[] { 4, 3 };
+
+                // Лінія ўключэння (Чырвоная)
+                if (onThreshold > 0 && onThreshold <= maxVal)
+                {
+                    float yOn = paddingTop + chartHeight - (float)(onThreshold / maxVal * chartHeight);
+                    thresholdPen.Color = System.Drawing.Color.Red;
+                    g.DrawLine(thresholdPen, (float)paddingLeft, yOn, (float)(paddingLeft + chartWidth), yOn);
+                }
+
+                // Лінія адключэння (Сіняя)
+                if (offThreshold > 0 && offThreshold <= maxVal)
+                {
+                    float yOff = paddingTop + chartHeight - (float)(offThreshold / maxVal * chartHeight);
+                    thresholdPen.Color = System.Drawing.Color.Blue;
+                    g.DrawLine(thresholdPen, (float)paddingLeft, yOff, (float)(paddingLeft + chartWidth), yOff);
+                }
+            }
+        }
+
+        if (_chartHistory.Count < 2) return;
+
+        // 6. МАЛЮЕМ АРАНЖАВУЮ ЛІНІЮ БЯГУЧАГА ТОКУ
+        using (System.Drawing.Pen linePen = new System.Drawing.Pen(System.Drawing.Color.Orange, 2f))
+        {
+            float stepX = (float)chartWidth / (ChartMaxPoints - 1);
+
+            for (int i = 0; i < _chartHistory.Count - 1; i++)
+            {
+                float x1 = paddingLeft + (i * stepX);
+                float y1 = paddingTop + chartHeight - (float)(_chartHistory[i] / maxVal * chartHeight);
+
+                float x2 = paddingLeft + ((i + 1) * stepX);
+                float y2 = paddingTop + chartHeight - (float)(_chartHistory[i + 1] / maxVal * chartHeight);
+
+                g.DrawLine(linePen, x1, y1, x2, y2);
+            }
+        }
+    }
+
+
+
 
 
 
@@ -262,18 +439,37 @@ public partial class Form1 : Form
 
 
 
-
     private async void TextBox_Click(object sender, EventArgs e)
     {
         if (_currentDevice == null || sender is not TextBox box || box.Tag == null) return;
         ModbusParameter? p = _currentDevice.Parameters.Find(x => x.Name.Equals(box.Tag.ToString(), StringComparison.OrdinalIgnoreCase));
         if (p == null) return;
 
-        // Translated dialog inputs to Belarusian ("Увядзіце значэнне", "Змяненне")
-        string val = Microsoft.VisualBasic.Interaction.InputBox($"Увядзіце значэнне (Рэг: {p.StartAddress}):", $"Змяненне: {p.Name}", box.Text);
+        // --- СТРОГІ І КАНКРЭТНЫ РАЗБОР ДА ПЕРШАГА НЕ-ЛІЧБАВАГА СІМВАЛА ---
+        string rawNumbersOnly = string.Empty;
+        if (!string.IsNullOrEmpty(box.Text))
+        {
+            // Trim() прыбірае выпадковыя прабелы напачатку значэння, калі яны там былі
+            foreach (char c in box.Text.Trim())
+            {
+                // Калі сімвал з'яўляецца часткай ліку — дадаем яго ў буфер
+                if (char.IsDigit(c) || c == '.' || c == ',' || c == '-')
+                {
+                    rawNumbersOnly += c;
+                }
+                else
+                {
+                    // ЯК ТОЛЬКІ сустрэлі ПРАБЕЛ, літару «х» ці «А» — 
+                    // імгненна спыняем разбор! Усё, што ідзе далей (напрыклад, 100мс), будзе адкінута.
+                    break;
+                }
+            }
+        }
+
+        // Зараз у InputBox трапіць строга чыстая лічба "50" або "15.4"
+        string val = Microsoft.VisualBasic.Interaction.InputBox($"Увядзіце значэнне (Рэг: {p.StartAddress}):", $"Змяненне: {p.Name}", rawNumbersOnly);
         if (string.IsNullOrWhiteSpace(val) || !short.TryParse(val, out short n)) return;
 
-        // Translated confirmation prompt to Belarusian ("Запісаць... у рэгістр?", "Запіс")
         if (MessageBox.Show($"Запісаць {n} у рэгістр {p.StartAddress}?", "Запіс", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.Cancel) return;
         try
         {
@@ -292,6 +488,9 @@ public partial class Form1 : Form
             _engine.Disconnect();
         }
     }
+
+
+
 
     private void BindUiControls(Control parent)
     {
@@ -343,8 +542,9 @@ public partial class Form1 : Form
         _isPolling = !enable; btnStart.Enabled = enable; btnStop.Enabled = !enable;
         cmbComPorts.Enabled = cmbBaudRates.Enabled = cmbPortMode.Enabled = btnRefreshPorts.Enabled = txtSlaveId.Enabled = enable;
 
-        // ИСПРАВЛЕНО: Кнопки команд (Tag) инвертируем (!enable). 
-        // Когда настройки связи заблокированы (enable = false), кнопки команд становятся АКТИВНЫМИ (true)
+        // Disable the clear button while Online, or leave it true if you want live clearing
+        btnClearChart.Enabled = enable;
+
         ToggleDynamicActionControls(this, !enable);
     }
 
@@ -401,7 +601,9 @@ public partial class Form1 : Form
 
         // Explicitly set the label color and text on the main UI thread
         lblStatus.ForeColor = System.Drawing.SystemColors.ControlText;
-        lblStatus.Text = "Опрос остановлен.";
+        lblStatus.Text = "Апытанне спынена.";
+        btnClearChart.Enabled = true;
+
     }
     protected override void OnFormClosing(FormClosingEventArgs e) { StopPolling(); base.OnFormClosing(e); }
 

@@ -23,7 +23,8 @@
     {
       "Name": "ADC_FILTERED",
       "StartAddress": 33,
-      "DataType": "Int16"
+      "DataType": "Int16",
+      "Unit": " 🐦"
     },
     {
       "Name": "ADC_K",
