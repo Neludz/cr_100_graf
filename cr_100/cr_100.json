@@ -1,0 +1,308 @@
+{
+  "SlaveId": 1,
+  "DeviceName": "CR100",
+  "Parameters": [
+    {
+      "Name": "Версія прылады",
+      "StartAddress": 0,
+      "DataType": "Int16",
+      "Scale": 0.01
+    },
+    {
+      "Name": "Ток RMS",
+      "StartAddress": 1,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Ток сярэдні",
+      "StartAddress": 2,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "ADC_FILTERED",
+      "StartAddress": 33,
+      "DataType": "Int16"
+    },
+    {
+      "Name": "ADC_K",
+      "StartAddress": 34,
+      "DataType": "Uint16"
+    },
+    {
+      "Name": "Аварыя устаўка-1 (bit 0)",
+      "StartAddress": 5,
+      "DataType": "Bit",
+      "BitPosition": 0,
+      "BitLabels": {
+        "OnText": "Аварыя",
+        "OnColor": "LightCoral",
+        "OffText": "Норма",
+        "OffColor": "Control"
+      }
+    },
+
+    {
+      "Name": "Аварыя устаўка-2 (bit 1)",
+      "StartAddress": 5,
+      "DataType": "Bit",
+      "BitPosition": 1,
+      "BitLabels": {
+        "OnText": "Аварыя",
+        "OnColor": "LightCoral",
+        "OffText": "Норма",
+        "OffColor": "Control"
+      }
+    },
+    {
+      "Name": "DO_1_Mode",
+      "StartAddress": 21,
+      "DataType": "UInt16",
+      "EnumValues": [
+        {
+          "Key": 0,
+          "Value": "0: АДКЛЮЧАНЫ (OFF)"
+        },
+        {
+          "Key": 1,
+          "Value": "1: MODBUS"
+        },
+        {
+          "Key": 2,
+          "Value": "2: АВАРЫЯ (ALARM)"
+        },
+        {
+          "Key": 3,
+          "Value": "3: ІНД. АВАРЫІ (NOTIFY ALARM)"
+        },
+        {
+          "Key": 4,
+          "Value": "4: ГАТОВЫ (READY)"
+        },
+        {
+          "Key": 5,
+          "Value": "5: ІНД. ГАТОЎНАСЦІ (NOTIFY READY)"
+        }
+      ]
+    },
+    {
+      "Name": "DO_2_Mode",
+      "StartAddress": 22,
+      "DataType": "UInt16",
+      "EnumValues": [
+        {
+          "Key": 0,
+          "Value": "0: АДКЛЮЧАНЫ (OFF)"
+        },
+        {
+          "Key": 1,
+          "Value": "1: MODBUS"
+        },
+        {
+          "Key": 2,
+          "Value": "2: АВАРЫЯ (ALARM)"
+        },
+        {
+          "Key": 3,
+          "Value": "3: ІНД. АВАРЫІ (NOTIFY ALARM)"
+        },
+        {
+          "Key": 4,
+          "Value": "4: ГАТОВЫ (READY)"
+        },
+        {
+          "Key": 5,
+          "Value": "5: ІНД. ГАТОЎНАСЦІ (NOTIFY READY)"
+        }
+      ]
+    },
+    {
+      "Name": "calibration 1 value",
+      "StartAddress": 31,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Status: DO - 1 (Bit 0)",
+      "StartAddress": 8,
+      "DataType": "Bit",
+      "BitPosition": 0,
+      "BitLabels": {
+        "OnText": "УКЛЮЧАНЫ",
+        "OnColor": "LightGreen",
+        "OffText": "АДКЛЮЧАНЫ",
+        "OffColor": "Control"
+      }
+    },
+    {
+      "Name": "Status: DO - 2 (Bit 1)",
+      "StartAddress": 8,
+      "DataType": "Bit",
+      "BitPosition": 1,
+      "BitLabels": {
+        "OnText": "УКЛЮЧАНЫ",
+        "OnColor": "LightGreen",
+        "OffText": "АДКЛЮЧАНЫ",
+        "OffColor": "Control"
+      }
+    },
+    {
+      "Name": "Устаўка ўключэння DO-1",
+      "StartAddress": 10,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Устаўка адключэння DO-1",
+      "StartAddress": 11,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Затрымка ўключэння DO-1",
+      "StartAddress": 12,
+      "DataType": "Int16",
+      "Unit": " х100мс"
+    },
+    {
+      "Name": "Затрымка адключэння DO-1",
+      "StartAddress": 13,
+      "DataType": "Int16",
+      "Unit": " х100мс"
+    },
+    {
+      "Name": "Устаўка ўключэння DO-2",
+      "StartAddress": 14,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Устаўка адключэння DO-2",
+      "StartAddress": 15,
+      "DataType": "Int16",
+      "Unit": " A"
+    },
+    {
+      "Name": "Затрымка ўключэння DO-2",
+      "StartAddress": 16,
+      "DataType": "Int16",
+      "Unit": " х100мс"
+    },
+    {
+      "Name": "Затрымка адключэння DO-2",
+      "StartAddress": 17,
+      "DataType": "Int16",
+      "Unit": " х100мс"
+    },
+    {
+      "Name": "Addr",
+      "StartAddress": 41,
+      "DataType": "Uint16"
+    },
+    {
+      "Name": "Baud",
+      "StartAddress": 40,
+      "DataType": "UInt16",
+      "EnumValues": [
+        {
+          "Key": 0,
+          "Value": "9600"
+        },
+        {
+          "Key": 1,
+          "Value": "19200"
+        },
+        {
+          "Key": 2,
+          "Value": "57600"
+        },
+        {
+          "Key": 3,
+          "Value": "115200"
+        }
+      ]
+    },
+    {
+      "Name": "Parity",
+      "StartAddress": 42,
+      "DataType": "UInt16",
+      "EnumValues": [
+        {
+          "Key": 0,
+          "Value": "8-N-1"
+        },
+        {
+          "Key": 1,
+          "Value": "8-N-2"
+        },
+        {
+          "Key": 2,
+          "Value": "8-Even-1"
+        },
+        {
+          "Key": 3,
+          "Value": "8-Odd-1"
+        }
+      ]
+    }
+  ],
+  "Commands": [
+    {
+      "Name": "Alarm notify reset",
+      "Address": 19,
+      "Value": 1,
+      "ConfirmText": "Выканаць скід?"
+    },
+    {
+      "Name": "start calibration 0",
+      "Address": 30,
+      "Value": 1000,
+      "ConfirmText": "Выканаць каліброўку нуля?\n\rПраз прыладу ў гэты час не павінен працякаць ток (0 А)."
+    },
+    {
+      "Name": "start calibration 1",
+      "Address": 30,
+      "Value": 1001,
+      "ConfirmText": "Выканаць каліброўку намінальнага тока?\n\rПраз прыладу ў гэты час павінен працякаць намінальны (калібровачны) ток."
+    },
+    {
+      "Name": "default",
+      "Address": 45,
+      "Value": 2817
+    },
+    {
+      "Name": "restart",
+      "Address": 46,
+      "Value": 2561
+    },
+    {
+      "Name": "Set ON DO_1",
+      "Address": 24,
+      "DataType": "Bit",
+      "BitPosition": 0,
+      "BitValue": true
+    },
+    {
+      "Name": "Set ON DO_2",
+      "Address": 24,
+      "DataType": "Bit",
+      "BitPosition": 1,
+      "BitValue": true
+    },
+    {
+      "Name": "Set OFF DO_1",
+      "Address": 25,
+      "DataType": "Bit",
+      "BitPosition": 0,
+      "BitValue": true
+    },
+    {
+      "Name": "Set OFF DO_2",
+      "Address": 25,
+      "DataType": "Bit",
+      "BitPosition": 1,
+      "BitValue": true
+    }
+  ]
+}
