@@ -6,7 +6,7 @@ namespace cr_100.Devices;
 
 public abstract class ModbusDevice
 {
-    public abstract byte SlaveId { get; init; }
+    public abstract byte SlaveId { get; set; } // Менавіта set;, а не init;
     public abstract string DeviceName { get; init; }
     public List<ModbusParameter> Parameters { get; set; } = new();
     public List<ModbusCommand> Commands { get; set; } = new(); // Список констант/команд из JSON

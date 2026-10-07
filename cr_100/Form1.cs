@@ -87,7 +87,6 @@ public partial class Form1 : Form
         {
             if (cmbComPorts.SelectedIndex == -1) { MessageBox.Show("Выберыце COM-порт!"); return; }
 
-            // Захоўваем параметры лакальна для бяспечнага перападключэння пры абрыве
             string selectedPort = cmbComPorts.SelectedItem.ToString()!;
             int selectedBaud = Convert.ToInt32(cmbBaudRates.SelectedItem);
 
@@ -96,18 +95,23 @@ public partial class Form1 : Form
 
             _engine.ConnectRtu(selectedPort, selectedBaud, pr, sb, 1000);
 
+            // --- ВЫПРАЎЛЕНА: ПРАМЫ І НАДЗЕЙНЫ ЗАПІС АДРАСА ПРЫЛАДЫ ---
+            // Чытаем лічбу з формы і наўпрост запісваем яе ў аб'ект прылады перад пачаткам апытання
             if (byte.TryParse(txtSlaveId.Text, out byte sid) && sid > 0)
             {
-                var prop = _currentDevice.GetType().GetProperty("SlaveId");
-                if (prop != null) prop.SetValue(_currentDevice, sid);
+                _currentDevice.SlaveId = sid;
             }
 
-            // Ачышчаем старую гісторыю графіка перад пачаткам хуткага апытання
+
+
             _chartHistory.Clear();
             picChart.Invalidate();
 
             _isPolling = true;
             ToggleInterfaceState(false);
+
+            // Пры старце робім палі актыўнымі і белымі
+            ToggleDynamicActionControls(this, true);
 
             while (_isPolling)
             {
@@ -115,19 +119,29 @@ public partial class Form1 : Form
                 {
                     if (!_isPolling) break;
 
-                    // АЎТАМАТЫЧНАЕ ПЕРАПАД КЛЮЧЭННЕ ПРЫ АБРЫВЕ СУВЯЗІ
+                    // --- БЕЗОПАСНЫ АЎТАРЕКОННЕКТ ---
                     if (lblStatus.Text.StartsWith("Памылка сувязі") || lblStatus.Text.StartsWith("Перападключэнне"))
                     {
                         lblStatus.ForeColor = System.Drawing.SystemColors.ControlText;
                         lblStatus.Text = "Перападключэнне да прыбора...";
-                        _engine.ConnectRtu(selectedPort, selectedBaud, pr, sb, 1000);
+                        try
+                        {
+                            _engine.ConnectRtu(selectedPort, selectedBaud, pr, sb, 1000);
+                        }
+                        catch
+                        {
+                            // Калі кабеля ўсё яшчэ няма, чакаем наступны такт
+                            await Task.Delay(500);
+                            continue;
+                        }
                     }
 
+                    // Запыт даных па Modbus
                     await _engine.PollDeviceAsync(_currentDevice);
 
                     if (!_isPolling) break;
 
-                    // 1. ЦЫКЛ АБНАЎЛЕННЯ ЭЛЕМЕНТАЎ ІНТЭРФЕЙСУ СУВЯЗІ (TextBox, ComboBox)
+                    // Абнаўленне элементаў інтэрфейсу
                     foreach (var param in _currentDevice.Parameters)
                     {
                         TextBox? targetTxt = FindBox(this, param.Name);
@@ -151,12 +165,8 @@ public partial class Form1 : Form
                                         {
                                             foreach (var item in param.EnumValues) targetCmb.Items.Add(item.Value);
                                         }
-
                                         int targetIdx = param.EnumValues.FindIndex(x => x.Key == rawKey);
-                                        if (targetIdx != -1 && targetCmb.DroppedDown == false)
-                                        {
-                                            targetCmb.SelectedIndex = targetIdx;
-                                        }
+                                        if (targetIdx != -1 && targetCmb.DroppedDown == false) targetCmb.SelectedIndex = targetIdx;
                                     }
                                 }
                                 else
@@ -168,19 +178,19 @@ public partial class Form1 : Form
                                     }
                                     else
                                     {
-                                        // --- ВЫПРАЎЛЕНА: ДАКЛАДНЫ РАЗЛІК ЗНАКАЎ ПАСЛЯ КОСКІ ---
-                                        string scaleStr = param.Scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                        // --- НАДЁЖНЫЙ МАТЕМАТИЧЕСКИЙ РАСЧЁТ ЗНАКОВ ПОСЛЕ КОСКИ ---
+                                        // Вычисляем количество знаков через логарифм по основанию 10 от Scale
+                                        // Например: для 0.1 -> 1, для 0.01 -> 2, для 0.001 -> 3
+                                        int decimalPlaces = (int)Math.Round(-Math.Log10(param.Scale));
+                                        if (decimalPlaces < 0) decimalPlaces = 0;
 
-                                        // Знаходзім пазіцыю кропкі і вылічаем сапраўдную колькасць знакаў пасля яе
-                                        int dotIndex = scaleStr.IndexOf('.');
-                                        int decimalPlaces = dotIndex >= 0 ? scaleStr.Length - dotIndex - 1 : 0;
-
-                                        // Ствараем правільную маску: "0.00" для двух знакаў, "0.0" для аднаго і г.д.
+                                        // Создаем точную маску форматирования: "0.00" для двух знаков
                                         string formatMask = "0." + new string('0', decimalPlaces);
 
                                         displayValue = scaledNum.ToString(formatMask, System.Globalization.CultureInfo.InvariantCulture);
                                     }
                                 }
+
                             }
                         }
                         else if (param.DataType == ModbusDataType.Bit)
@@ -213,17 +223,20 @@ public partial class Form1 : Form
                         {
                             targetTxt.Text = displayValue + unitSuffix;
                         }
-                    } // ⚠️ КАНЕЦ ЦЫКЛА FOREACH ДЛЯ ТЭКСТБОКСАЎ
+                    }
 
-                    // === 2. ХУТКАСНЫ АДСЦЫЛОГРАФ ТОКУ (УЖО ПАСЛЯ FOREACH - 500мс) ===
-                    // Выпраўлена: Цяпер строга шукаем менавіта "Ток RMS"
+                    // Калі пасля памылкі сувязь аднавілася — уключаем палі назад (робім белымі)
+                    if (lblStatus.Text.StartsWith("Перападключэнне") || lblStatus.ForeColor == System.Drawing.Color.DarkRed)
+                    {
+                        ToggleDynamicActionControls(this, true);
+                    }
+
+                    // Абнаўленне гісторыі графіка (500мс)
                     var chartParam = _currentDevice.Parameters.Find(p => p.Name.Equals("Ток RMS", StringComparison.OrdinalIgnoreCase));
                     if (chartParam != null && double.TryParse(chartParam.Value.ToString(), out double chartVal))
                     {
                         _chartHistory.Add(chartVal * chartParam.Scale);
                         if (_chartHistory.Count > ChartMaxPoints) _chartHistory.RemoveAt(0);
-
-                        // Загадваем PictureBox імгненна перамалявацца
                         picChart.Invalidate();
                     }
 
@@ -236,17 +249,27 @@ public partial class Form1 : Form
                 {
                     if (!_isPolling) break;
 
+                    // --- РАЗУМНЫ ІМГНЕННЫ СКІД ПРЫ АБРЫВЕ ---
+                    // Калі мінулы такт быў паспяховым (Сувязь: ОК), значыць абрыў адбыўся ТОЛЬКІ ШТО.
+                    // Выклікаем скід і ачыстку палёў ОДЗІН РАЗ, каб яны імгненна сталі шэрымі!
+                    if (lblStatus.Text.StartsWith("Сувязь: OK"))
+                    {
+                        ToggleDynamicActionControls(this, false);
+                    }
+
                     lblStatus.ForeColor = System.Drawing.Color.DarkRed;
                     lblStatus.Text = $"Памылка сувязі: {ex.Message}";
                     _engine.Disconnect();
                 }
 
                 if (!_isPolling) break;
-                await Task.Delay(500); // 500 мс — частата абнаўлення
+                await Task.Delay(500);
             }
         }
         catch (Exception ex) { MessageBox.Show($"Памылка старту: {ex.Message}"); StopPolling(); }
     }
+
+
 
 
 
@@ -361,7 +384,7 @@ public partial class Form1 : Form
         if (_chartHistory.Count < 2) return;
 
         // 6. МАЛЮЕМ АРАНЖАВУЮ ЛІНІЮ БЯГУЧАГА ТОКУ
-        using (System.Drawing.Pen linePen = new System.Drawing.Pen(System.Drawing.Color.Orange, 2f))
+        using (System.Drawing.Pen linePen = new System.Drawing.Pen(System.Drawing.Color.OrangeRed, 2f))
         {
             float stepX = (float)chartWidth / (ChartMaxPoints - 1);
 
@@ -554,24 +577,54 @@ public partial class Form1 : Form
         {
             if (c.Tag != null && (c is Button || c is TextBox || c is ComboBox))
             {
-                c.Enabled = enable;
-
-                // Clear visual state background properties back to neutral system themes when going Offline
-                if (c is TextBox tb && !enable && _currentDevice != null)
+                // Числовые изменяемые уставки (у которых ReadOnly == false в дизайнере)
+                // должны оставаться доступными ВСЕГДА, чтобы их можно было менять в Офлайне!
+                if (c is TextBox tbCheck && tbCheck.ReadOnly == false)
                 {
-                    // Check if this text box tracks a binary bit flag parameter
-                    var matchedParam = _currentDevice.Parameters.Find(p => p.Name.Equals(tb.Tag.ToString(), StringComparison.OrdinalIgnoreCase));
-                    if (matchedParam != null && matchedParam.DataType == ModbusDataType.Bit)
+                    c.Enabled = true; // Уставки всегда активны для ввода калибровок
+                }
+                else
+                {
+                    c.Enabled = enable; // Индикаторы (Ток, Частота, Лампы) блокируются в Офлайне
+                }
+
+                // Если опрос СТОПНУТ (enable == false) — очищаем только заблокированные индикаторы
+                if (!enable)
+                {
+                    if (c is TextBox tb)
                     {
-                        tb.Text = "Няма сувязі";
-                        tb.BackColor = System.Drawing.SystemColors.Control; // System Grey
-                        tb.ForeColor = System.Drawing.SystemColors.GrayText;
+                        // Очищаем только информационные поля (Ток, Скорость, Версии, Лампы)
+                        // Но НЕ ТРОГАЕМ изменяемые поля уставок (чтобы калибровки не стирались при стопе!)
+                        if (tb.ReadOnly == true)
+                        {
+                            tb.Text = "";
+                            tb.BackColor = System.Drawing.SystemColors.Control; // Становятся нейтрально-серыми
+                        }
+                    }
+                    else if (c is ComboBox cb && cb != cmbComPorts && cb != cmbBaudRates && cb != cmbPortMode)
+                    {
+                        cb.SelectedIndex = -1; // Сброс выпадающих списков
+                    }
+                }
+                // Если сувязь пошла Онлайн (enable == true) — возвращаем рабочие цвета индикаторам
+                else
+                {
+                    if (c is TextBox tb && tb.ReadOnly == true)
+                    {
+                        var matchedParam = _currentDevice?.Parameters.Find(p => p.Name.Equals(tb.Tag.ToString(), StringComparison.OrdinalIgnoreCase));
+                        if (matchedParam == null || matchedParam.DataType != ModbusDataType.Bit)
+                        {
+                            tb.BackColor = System.Drawing.Color.White; // Линейные индикаторы снова белые
+                        }
                     }
                 }
             }
             if (c.HasChildren) ToggleDynamicActionControls(c, enable);
         }
     }
+
+
+
     private void ComDraw(object sender, DrawItemEventArgs e)
     {
         if (e.Index < 0 || sender is not ComboBox cb) return; e.DrawBackground();
@@ -593,17 +646,18 @@ public partial class Form1 : Form
     private void btnStop_Click(object sender, EventArgs e) => StopPolling();
     private void StopPolling()
     {
-        _isPolling = false; // Property trigger instantly neutralizes the loop execution thread
+        _isPolling = false; // Уласцівасць сама закрые порт і спыніць цыкл
 
         btnStart.Enabled = true;
         btnStop.Enabled = false;
         cmbComPorts.Enabled = cmbBaudRates.Enabled = cmbPortMode.Enabled = btnRefreshPorts.Enabled = txtSlaveId.Enabled = true;
 
-        // Explicitly set the label color and text on the main UI thread
+        // Выстаўляем статус на беларускай мове
         lblStatus.ForeColor = System.Drawing.SystemColors.ControlText;
         lblStatus.Text = "Апытанне спынена.";
-        btnClearChart.Enabled = true;
 
+        // --- ДАДЗЕНА: Прымусова ачышчаем і скідаем усе палі формы пры стопе ---
+        ToggleDynamicActionControls(this, false);
     }
     protected override void OnFormClosing(FormClosingEventArgs e) { StopPolling(); base.OnFormClosing(e); }
 

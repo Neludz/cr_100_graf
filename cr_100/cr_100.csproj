@@ -7,7 +7,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageIcon>mal.ico</PackageIcon>
+    <ApplicationIcon>mal.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="mal.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NModbus" Version="3.0.83" />

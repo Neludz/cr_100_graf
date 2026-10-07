@@ -17,9 +17,9 @@ public class ModbusEnumItem
 // Описание кастомных текстов и цветов для лампы бита
 public class ModbusBitLabels
 {
-    public string OnText { get; init; } = "ВКЛ";
+    public string OnText { get; init; } = "УКЛ";
     public string OnColor { get; init; } = "LightGreen";
-    public string OffText { get; init; } = "ОТКЛ";
+    public string OffText { get; init; } = "АДКЛ";
     public string OffColor { get; init; } = "LightCoral";
 }
 public class ModbusParameter

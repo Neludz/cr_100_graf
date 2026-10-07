@@ -38,7 +38,7 @@ public class ModbusEngine
         if (!success)
         {
             _tcpClient.Close();
-            throw new TimeoutException($"Таймаут подключения к TCP {ipAddress}:{port}");
+            throw new TimeoutException($"Таймаут TCP {ipAddress}:{port}");
         }
 
         _tcpClient.EndConnect(result);
@@ -58,7 +58,7 @@ public class ModbusEngine
 
     public async Task PollDeviceAsync(ModbusDevice device)
     {
-        if (_master == null) throw new InvalidOperationException("Движок Modbus не подключен.");
+        if (_master == null) throw new InvalidOperationException("Рухавік Modbus не падключаны.");
         ushort start = device.GetPollStartAddress();
         ushort count = device.GetPollRegisterCount();
 
@@ -75,18 +75,18 @@ public class ModbusEngine
 
     public async Task WriteConstantOrVariableAsync(byte slaveId, ushort address, ushort value)
     {
-        if (_master == null) throw new InvalidOperationException("Движок Modbus не подключен.");
+        if (_master == null) throw new InvalidOperationException("Рухавік Modbus не падключаны.");
         await _master.WriteSingleRegisterAsync(slaveId, address, value);
     }
 
     // Метод побитовой записи (Чтение -> Битовая маска -> Функция 06 Запись)
     public async Task WriteBitInRegisterAsync(byte slaveId, ushort address, int bitPosition, bool bitValue)
     {
-        if (_master == null) throw new InvalidOperationException("Движок Modbus не подключен.");
+        if (_master == null) throw new InvalidOperationException("Рухавік Modbus не падключаны.");
 
         // 1. Читаем текущее 16-битное значение регистра (Функция 03)
         ushort[] currentReg = await _master.ReadHoldingRegistersAsync(slaveId, address, 1);
-        if (currentReg == null || currentReg.Length == 0) throw new System.IO.IOException("Ошибка чтения регистра.");
+        if (currentReg == null || currentReg.Length == 0) throw new System.IO.IOException("Памылка чытання рэгістра.");
 
         ushort regValue = currentReg[0];
 
@@ -129,7 +129,7 @@ public class CustomStreamAdapter : NModbus.IO.IStreamResource
         while (_port.BytesToRead == 0)
         {
             if (_port.ReadTimeout != SerialPort.InfiniteTimeout && (DateTime.Now - startTime).TotalMilliseconds > _port.ReadTimeout)
-                throw new InvalidOperationException("Устройство не ответило (Таймаут).");
+                throw new InvalidOperationException("Прылада не адказвае (Таймаут).");
             System.Threading.Thread.Sleep(10);
         }
         return _port.Read(buffer, offset, count);

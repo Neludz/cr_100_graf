@@ -7,13 +7,14 @@ namespace cr_100.Devices;
 
 public class JsonModbusDevice : ModbusDevice
 {
-    public override byte SlaveId { get; init; }
+    public override byte SlaveId { get; set; } // Менавіта set;
+
     public override string DeviceName { get; init; } = string.Empty;
 
     public static JsonModbusDevice LoadFromFile(string filePath)
     {
         if (!File.Exists(filePath))
-            throw new FileNotFoundException($"Файл конфигурации не найден: {filePath}");
+            throw new FileNotFoundException($"Файл конфігурацыі не знойдзены: {filePath}");
 
         string jsonString = File.ReadAllText(filePath);
 
@@ -24,6 +25,6 @@ public class JsonModbusDevice : ModbusDevice
         };
 
         var device = JsonSerializer.Deserialize<JsonModbusDevice>(jsonString, options);
-        return device ?? throw new Exception("Ошибка десериализации JSON.");
+        return device ?? throw new Exception("Памылка JSON.");
     }
 }

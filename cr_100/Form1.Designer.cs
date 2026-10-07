@@ -120,18 +120,18 @@
             // 
             // btnStart
             // 
-            btnStart.Location = new Point(31, 12);
+            btnStart.Location = new Point(13, 12);
             btnStart.Name = "btnStart";
-            btnStart.Size = new Size(112, 33);
+            btnStart.Size = new Size(114, 33);
             btnStart.TabIndex = 0;
             btnStart.Text = "Старт";
             btnStart.UseVisualStyleBackColor = true;
             // 
             // btnStop
             // 
-            btnStop.Location = new Point(146, 12);
+            btnStop.Location = new Point(129, 12);
             btnStop.Name = "btnStop";
-            btnStop.Size = new Size(112, 33);
+            btnStop.Size = new Size(114, 33);
             btnStop.TabIndex = 1;
             btnStop.Text = "Стоп";
             btnStop.UseVisualStyleBackColor = true;
@@ -147,7 +147,7 @@
             // 
             // btnRefreshPorts
             // 
-            btnRefreshPorts.Location = new Point(274, 12);
+            btnRefreshPorts.Location = new Point(258, 12);
             btnRefreshPorts.Name = "btnRefreshPorts";
             btnRefreshPorts.Size = new Size(35, 33);
             btnRefreshPorts.TabIndex = 12;
@@ -159,7 +159,7 @@
             cmbBaudRates.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbBaudRates.FormattingEnabled = true;
             cmbBaudRates.Items.AddRange(new object[] { "9600", "19200", "57600", "115200" });
-            cmbBaudRates.Location = new Point(427, 12);
+            cmbBaudRates.Location = new Point(411, 12);
             cmbBaudRates.Name = "cmbBaudRates";
             cmbBaudRates.Size = new Size(114, 33);
             cmbBaudRates.TabIndex = 13;
@@ -169,14 +169,14 @@
             cmbPortMode.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbPortMode.FormattingEnabled = true;
             cmbPortMode.Items.AddRange(new object[] { "8-N-1", "8-N-2", "8-Even-1", "8-Odd-1" });
-            cmbPortMode.Location = new Point(544, 12);
+            cmbPortMode.Location = new Point(528, 12);
             cmbPortMode.Name = "cmbPortMode";
             cmbPortMode.Size = new Size(114, 33);
             cmbPortMode.TabIndex = 14;
             // 
             // txtSlaveId
             // 
-            txtSlaveId.Location = new Point(773, 13);
+            txtSlaveId.Location = new Point(764, 13);
             txtSlaveId.Name = "txtSlaveId";
             txtSlaveId.Size = new Size(114, 31);
             txtSlaveId.TabIndex = 15;
@@ -186,7 +186,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(672, 16);
+            label1.Location = new Point(654, 15);
             label1.Name = "label1";
             label1.Size = new Size(106, 25);
             label1.TabIndex = 16;
@@ -196,7 +196,7 @@
             // 
             cmbComPorts.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbComPorts.FormattingEnabled = true;
-            cmbComPorts.Location = new Point(309, 12);
+            cmbComPorts.Location = new Point(293, 12);
             cmbComPorts.Name = "cmbComPorts";
             cmbComPorts.Size = new Size(114, 33);
             cmbComPorts.TabIndex = 18;
@@ -276,6 +276,8 @@
             // textBox2
             // 
             textBox2.BackColor = SystemColors.Window;
+            textBox2.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 204);
+            textBox2.ForeColor = Color.Red;
             textBox2.Location = new Point(575, 364);
             textBox2.Name = "textBox2";
             textBox2.Size = new Size(133, 31);
@@ -364,6 +366,8 @@
             // textBox6
             // 
             textBox6.BackColor = SystemColors.Window;
+            textBox6.Font = new Font("Segoe UI", 9F);
+            textBox6.ForeColor = Color.Blue;
             textBox6.Location = new Point(575, 472);
             textBox6.Name = "textBox6";
             textBox6.Size = new Size(133, 31);
@@ -543,6 +547,7 @@
             textBox11.BackColor = SystemColors.Window;
             textBox11.Location = new Point(938, 364);
             textBox11.Name = "textBox11";
+            textBox11.ReadOnly = true;
             textBox11.Size = new Size(133, 31);
             textBox11.TabIndex = 45;
             textBox11.Tag = "Устаўка ўключэння DO-2";
@@ -636,6 +641,8 @@
             // textBox13
             // 
             textBox13.BackColor = SystemColors.Window;
+            textBox13.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold, GraphicsUnit.Point, 204);
+            textBox13.ForeColor = Color.OrangeRed;
             textBox13.Location = new Point(179, 6);
             textBox13.Name = "textBox13";
             textBox13.ReadOnly = true;
@@ -781,11 +788,11 @@
             // label34
             // 
             label34.AutoSize = true;
-            label34.Location = new Point(41, 380);
+            label34.Location = new Point(31, 379);
             label34.Name = "label34";
-            label34.Size = new Size(88, 25);
+            label34.Size = new Size(121, 25);
             label34.TabIndex = 83;
-            label34.Text = "К фільтра";
+            label34.Text = "Каэф. фільтра";
             // 
             // label33
             // 
@@ -912,7 +919,7 @@
             // label35
             // 
             label35.AutoSize = true;
-            label35.Location = new Point(903, 16);
+            label35.Location = new Point(880, 16);
             label35.Name = "label35";
             label35.Size = new Size(119, 25);
             label35.TabIndex = 88;
@@ -922,10 +929,10 @@
             // textBox18
             // 
             textBox18.BackColor = SystemColors.Window;
-            textBox18.Location = new Point(1021, 13);
+            textBox18.Location = new Point(1000, 13);
             textBox18.Name = "textBox18";
             textBox18.ReadOnly = true;
-            textBox18.Size = new Size(77, 31);
+            textBox18.Size = new Size(114, 31);
             textBox18.TabIndex = 68;
             textBox18.Tag = "Версія прылады";
             textBox18.Text = "---";
